@@ -67,7 +67,9 @@ function checkStatusRepo(robot, repo, rooms, userRequest) {
           if (userRequest) {
             userRequest.reply(reply);
           } else {
-            robot.messageRoom(rooms[0], reply);
+	    for (var j = 0; j < rooms.length; j++) {
+                robot.messageRoom(rooms[j], reply);
+            }
           }
         } else if (userRequest) {
           userRequest.reply("nothing to update for " + repo);
