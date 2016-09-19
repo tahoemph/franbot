@@ -96,7 +96,7 @@ function calculateWakup() {
   var hours = 16 - now.getUTCHours();
   var minutes = 30 - now.getUTCMinutes();
   var delta = hours*60 + minutes;
-  if (delta < 0) {
+  if (delta <= 0) {
     delta += 24*60;
   }
   console.log("waking up in " + delta + " minutes");
