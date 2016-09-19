@@ -128,7 +128,6 @@ module.exports = function(robot) {
   });
 
   robot.respond(/.*/, function(res) {
-    console.log(endsWith(res.message.text.toLowerCase(), "help"));
     if (endsWith(res.message.text.toLowerCase(), "help")) {
       return;
     }
