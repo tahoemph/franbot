@@ -81,7 +81,8 @@ function checkStatusRepo(robot, repo, rooms, userRequest) {
 function checkStatusRepos(robot) {
   var now = new Date();
   // Don't whine on the weekends.
-  if (!(now.getUTCDay() === 6 || now.getUTCDay() === 0)) {
+  if (now.getUTCDay() === 6 || now.getUTCDay() === 0) {
+	console.log("skipped weekend");
     return;
   }
   for (var i = 0; i < config.length; i++) {
