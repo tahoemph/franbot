@@ -117,24 +117,99 @@ function endsWith(src, target) {
     return src.slice(-target.length) == target;
 }
 
+function _requestReviews(reviewList, repo, page, doneCallback) {
+    page = page || 1;
+    requestUrl = 'https://saymedia.beanstalkapp.com/api/code_reviews.json';
+    options = {
+        'auth': {
+            'user': 'mhunter',
+            'pass': 'a69df16682625caf2dfc77e3d59bc9d34123607a77db453e69'
+        },
+        'url': requestUrl,
+        'Content-Type': 'application/json',
+        'User-Agent': 'saymedia',
+        'status': 'pending',
+        'page': page
+    };
+    request(options, function(err, res, body) {
+        reviews = JSON.parse(body);
+        for (var reviewInd = 0; reviewInd < reviews.code_reviews.length; reviewInd++) {
+            review = reviews.code_reviews[reviewInd];
+            if (review.repository.name !== repo) {
+                continue;
+            }
+            if (review.state === 'approved' || review.state === 'cancelled') {
+                continue;
+            }
+            var url = 'https://saymedia.beanstalkapp.com/' + review.repository.name +
+                '/code_reviews/' + review.id;
+            var reviewers = [];
+            for (var i = 0; i < review.assigned_users.length; i++) {
+                reviewers.push(review.assigned_users[i].login);
+            }
+            info = {
+                'url': url,
+                'requester': review.requesting_user.login, 
+                'reviewers': reviewers,
+                'state': review.state,
+                'repo': review.repository.name,
+                'id': review.id
+            };
+            reviewList.push(info);
+        }
+        // Did we get them all or did we at least get enough?
+        if (reviews.total_pages < page || reviewList.length > 10 || (reviewList.length > 0 && page > 20)) {
+            doneCallback(reviewList);
+        } else {
+            _requestReviews(reviewList, repo, page + 1, doneCallback);
+        }
+    });
+}
+
+function checkReviewsRepo(robot, repo, rooms, userRequest) {
+  _requestReviews([], repo, undefined, function(reviews) {
+      if (reviews.length === 0) {
+          userRequest.send('no open reviews for ' + repo);
+          return;
+      }
+      var review, statement;
+      for (var reviewInd = 0; reviewInd < reviews.length; reviewInd++) {
+          review = reviews[reviewInd];
+          statement = [review.requester, [review.reviewers].join(','), review.url].join(' ');
+          userRequest.send(statement);
+      }
+  });
+}
+
 module.exports = function(robot) {
   setTimeout(function() {
     scheduleCheckStatusRepos(robot);
   }, 1*1000);
 
   robot.respond(/help/i, function(res) {
-    res.reply("Send me the name of a repo and I'll tell you if it needs to be released.");
-    res.reply("I'll also prod you in the morning for certain repos.");
+    var helpText = [
+        "I respond to \"release <repo>\" with information about the release status of the repo.",
+        "I respond to \"reviews <repo>\" with information about the code reviews for the repo.",
+        "I'll whine many mornings if you havn't kept up with deploys."
+    ];
+    for (var i = 0; i < helpText.length; i++) {
+        res.reply(helpText[i]);
+    }
   });
 
-  robot.respond(/.*/, function(res) {
-    if (endsWith(res.message.text.toLowerCase(), "help")) {
-      return;
-    }
+  robot.respond(/release .*/, function(res) {
     var messageParts = res.message.text.split(' ');
     if (messageParts.length === 0) {
       return; // huh?
     }
     checkStatusRepo(robot, messageParts[messageParts.length - 1], undefined, res);
+  });
+
+  robot.respond(/reviews .*/, function(res) {
+    var messageParts = res.message.text.split(' ');
+    if (messageParts.length === 0) {
+      return; // huh?
+    }
+    checkReviewsRepo(robot, messageParts[messageParts.length - 1], undefined, res);
   });
 };
