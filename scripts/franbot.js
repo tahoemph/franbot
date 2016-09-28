@@ -119,21 +119,26 @@ function endsWith(src, target) {
 
 function _requestReviews(reviewList, repo, page, doneCallback) {
     page = page || 1;
-    requestUrl = 'https://saymedia.beanstalkapp.com/api/code_reviews.json';
+    requestUrl = 'https://' + process.env.BEANSTALK_DOMAIN + '/api/code_reviews.json';
     options = {
         'auth': {
-            'user': 'mhunter',
-            'pass': 'a69df16682625caf2dfc77e3d59bc9d34123607a77db453e69'
+            'user': process.env.BEANSTALK_USER,
+            'pass': process.env.BEANSTALK_PASS
         },
         'url': requestUrl,
         'Content-Type': 'application/json',
-        'User-Agent': 'saymedia',
+        'User-Agent': process.env.BEANSTALK_UA,
         'status': 'pending',
-        'page': page
+        'qs': {
+            'page': page
+        }
     };
     request(options, function(err, res, body) {
-        reviews = JSON.parse(body);
-        for (var reviewInd = 0; reviewInd < reviews.code_reviews.length; reviewInd++) {
+        var reviewers, url, review, info;
+        var reviews = JSON.parse(body);
+        for (var reviewInd = 0;
+                reviewInd < reviews.code_reviews.length;
+                reviewInd++) {
             review = reviews.code_reviews[reviewInd];
             if (review.repository.name !== repo) {
                 continue;
@@ -141,9 +146,9 @@ function _requestReviews(reviewList, repo, page, doneCallback) {
             if (review.state === 'approved' || review.state === 'cancelled') {
                 continue;
             }
-            var url = 'https://saymedia.beanstalkapp.com/' + review.repository.name +
-                '/code_reviews/' + review.id;
-            var reviewers = [];
+            url = 'https://' + process.env.BEANSTALK_DOMAIN + '/' +
+                review.repository.name + '/code_reviews/' + review.id;
+            reviewers = [];
             for (var i = 0; i < review.assigned_users.length; i++) {
                 reviewers.push(review.assigned_users[i].login);
             }
@@ -158,7 +163,7 @@ function _requestReviews(reviewList, repo, page, doneCallback) {
             reviewList.push(info);
         }
         // Did we get them all or did we at least get enough?
-        if (reviews.total_pages < page || reviewList.length > 10 || (reviewList.length > 0 && page > 20)) {
+        if (reviews.total_pages < page || reviewList.length > 10 || (reviewList.length > 0 && page > 10)) {
             doneCallback(reviewList);
         } else {
             _requestReviews(reviewList, repo, page + 1, doneCallback);
@@ -175,7 +180,8 @@ function checkReviewsRepo(robot, repo, rooms, userRequest) {
       var review, statement;
       for (var reviewInd = 0; reviewInd < reviews.length; reviewInd++) {
           review = reviews[reviewInd];
-          statement = [review.requester, [review.reviewers].join(','), review.url].join(' ');
+          statement = "open review: " + review.url + " (owner: " + review.requester +
+              " reviewers: " + review.reviewers.join(',') + ")";
           userRequest.send(statement);
       }
   });
