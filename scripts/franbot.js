@@ -134,6 +134,11 @@ function _requestReviews(reviewList, repo, page, doneCallback) {
         }
     };
     request(options, function(err, res, body) {
+        if (err) {
+            console.log("request err: " + err);
+            doneCallback(reviewList);
+            return;
+        }
         var reviewers, url, review, info;
         var reviews = JSON.parse(body);
         for (var reviewInd = 0;
