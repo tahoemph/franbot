@@ -15,6 +15,16 @@
 request = require('request');
 config = require('../config');
 
+function _sendMessage(message, robot, rooms, userRequest) {
+  if (userRequest) {
+    userRequest.reply(message);
+  } else {
+    for (var j = 0; j < rooms.length; j++) {
+      robot.messageRoom(rooms[j], message);
+    }
+  }
+}
+
 function checkStatusRepo(robot, repo, rooms, userRequest) {
   request("https://api.buildkite.com/v2/organizations/" + process.env.BUILDKITE_ORGANIZATION +
       "/pipelines/" + repo + "/builds?branch=master&access_token=" +
@@ -64,13 +74,7 @@ function checkStatusRepo(robot, repo, rooms, userRequest) {
               "Outstanding " + repo + " work ready to be released: " +
               "https://" + process.env.BEANSTALK_DOMAIN + "/" + repo + "/compare?ref=c-" + last_release +
               "&target=c-" + last_build;
-          if (userRequest) {
-            userRequest.reply(reply);
-          } else {
-	    for (var j = 0; j < rooms.length; j++) {
-                robot.messageRoom(rooms[j], reply);
-            }
-          }
+          _sendMessage(reply, robot, rooms, userRequest);
         } else if (userRequest) {
           userRequest.reply("nothing to update for " + repo);
         }
@@ -85,16 +89,15 @@ function checkStatusRepos(robot) {
 	console.log("skipped weekend");
     return;
   }
-  for (var i = 0; i < config.length; i++) {
-    checkStatusRepo(robot, config[i].repo, config[i].rooms);
+  for (var i = 0; i < config.deploys.length; i++) {
+    checkStatusRepo(robot, config.deploys[i].repo, config.deploys[i].rooms);
   }
 }
 
-function calculateWakup() {
-  // We wakeup at 16:30UTC every day.
+function calculateWakup(hour, minute) {
   var now = new Date();
-  var hours = 16 - now.getUTCHours();
-  var minutes = 30 - now.getUTCMinutes();
+  var hours = hour - now.getUTCHours();
+  var minutes = minute - now.getUTCMinutes();
   var delta = hours*60 + minutes;
   if (delta <= 0) {
     delta += 24*60;
@@ -107,7 +110,8 @@ function scheduleCheckStatusRepos(robot) {
   setTimeout(function() {
     checkStatusRepos(robot);
     scheduleCheckStatusRepos(robot);
-  }, calculateWakup());
+    // We wakeup at 16:30UTC every day.
+  }, calculateWakup(16, 30));
 }
 
 function endsWith(src, target) {
@@ -179,22 +183,51 @@ function _requestReviews(reviewList, repo, page, doneCallback) {
 function checkReviewsRepo(robot, repo, rooms, userRequest) {
   _requestReviews([], repo, undefined, function(reviews) {
       if (reviews.length === 0) {
-          userRequest.send('no open reviews for ' + repo);
+	  if (userRequest) {
+            userRequest.send('no open reviews for ' + repo);
+          }
           return;
       }
       var review, statement;
       for (var reviewInd = 0; reviewInd < reviews.length; reviewInd++) {
           review = reviews[reviewInd];
-          statement = "open review: " + review.url + " (owner: " + review.requester +
-              " reviewers: " + review.reviewers.join(',') + ")";
-          userRequest.send(statement);
+          statement = "open review: " +
+            review.url + " (owner: " + review.requester +
+            " reviewers: " + review.reviewers.join(',') + ")";
+          _sendMessage(statement, robot, rooms, userRequest);
       }
   });
+}
+
+function checkReviews(robot) {
+  var now = new Date();
+  // Don't whine on the weekends.
+  if (now.getUTCDay() === 6 || now.getUTCDay() === 0) {
+	console.log("skipped weekend");
+    return;
+  }
+  for (var i = 0; i < config.reviews.length; i++) {
+    console.log("check " + config.reviews[i].repo);
+    checkReviewsRepo(robot, config.reviews[i].repo, config.reviews[i].rooms);
+  }
+}
+
+function scheduleCheckReviews(robot) {
+  console.log("scheduleCheckReviews");
+  setTimeout(function() {
+    checkReviews(robot);
+    scheduleCheckReviews(robot);
+    // We wakeup at 16:30UTC every day.
+  }, calculateWakup(16, 30));
 }
 
 module.exports = function(robot) {
   setTimeout(function() {
     scheduleCheckStatusRepos(robot);
+  }, 1*1000);
+
+  setTimeout(function() {
+    scheduleCheckReviews(robot);
   }, 1*1000);
 
   robot.respond(/help/i, function(res) {
