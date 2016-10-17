@@ -234,7 +234,7 @@ module.exports = function(robot) {
     var helpText = [
         "I respond to \"release <repo>\" with information about the release status of the repo.",
         "I respond to \"reviews <repo>\" with information about the code reviews for the repo.",
-        "I'll whine many mornings if you havn't kept up with deploys."
+        "I'll whine many mornings if you havn't kept up with deploys or reviews."
     ];
     for (var i = 0; i < helpText.length; i++) {
         res.reply(helpText[i]);
