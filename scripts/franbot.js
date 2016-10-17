@@ -163,6 +163,7 @@ function _requestReviews(reviewList, repo, page, doneCallback) {
             }
             info = {
                 'url': url,
+		'description': review.description,
                 'requester': review.requesting_user.login, 
                 'reviewers': reviewers,
                 'state': review.state,
@@ -191,8 +192,8 @@ function checkReviewsRepo(robot, repo, rooms, userRequest) {
       var review, statement;
       for (var reviewInd = 0; reviewInd < reviews.length; reviewInd++) {
           review = reviews[reviewInd];
-          statement = "open review: " +
-            review.url + " (owner: " + review.requester +
+          statement = review.url + " " + review.description + " " +
+	    " (owner: " + review.requester +
             " reviewers: " + review.reviewers.join(',') + ")";
           _sendMessage(statement, robot, rooms, userRequest);
       }
