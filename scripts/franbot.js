@@ -12,8 +12,9 @@
 // Author:
 //     tahoemph@gmail.com
 
-request = require('request');
-config = require('../config');
+var config = require('../config');
+var moment = require('moment-timezone');
+var request = require('request');
 
 function _sendMessage(message, robot, rooms, userRequest) {
   if (userRequest) {
@@ -94,10 +95,11 @@ function checkStatusRepos(robot) {
   }
 }
 
-function calculateWakup(hour, minute) {
+function calculateWakeup(hour, minute) {
   var now = new Date();
-  var hours = hour - now.getUTCHours();
-  var minutes = minute - now.getUTCMinutes();
+  var localNow = moment.utc(now).tz("America/Los_Angeles");
+  var hours = hour - localNow.hour();
+  var minutes = minute - localNow.minute();
   var delta = hours*60 + minutes;
   if (delta <= 0) {
     delta += 24*60;
@@ -110,8 +112,7 @@ function scheduleCheckStatusRepos(robot) {
   setTimeout(function() {
     checkStatusRepos(robot);
     scheduleCheckStatusRepos(robot);
-    // We wakeup at 16:30UTC every day.
-  }, calculateWakup(16, 30));
+  }, calculateWakeup(9, 30));
 }
 
 function endsWith(src, target) {
@@ -218,8 +219,7 @@ function scheduleCheckReviews(robot) {
   setTimeout(function() {
     checkReviews(robot);
     scheduleCheckReviews(robot);
-    // We wakeup at 16:30UTC every day.
-  }, calculateWakup(16, 30));
+  }, calculateWakeup(9, 30));
 }
 
 module.exports = function(robot) {

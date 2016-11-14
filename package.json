@@ -17,6 +17,7 @@
     "hubot-rules": "^0.1.1",
     "hubot-scripts": "2.5.2",
     "hubot-shipit": "^0.2.0",
+    "moment-timezone": "^0.5.9",
     "request": "^2.75.0"
   },
   "engines": {
