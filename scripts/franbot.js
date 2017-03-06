@@ -50,7 +50,9 @@ function checkStatusRepo(robot, repo, rooms, userRequest) {
             continue;
           }
           if (action.commit === 'HEAD') {
-            continue;
+	    // If somebody asked to build HEAD we don't have the commmit info.  But we might be able
+            // dig it out of the meta data.  Overwrite action.commit with the real commitish.
+            action.commit = action.meta_data['jobsworth:source_commit_id']
           }
           jobs = action.jobs;
           for (var jobInd = 0; jobInd < jobs.length; jobInd++) {
